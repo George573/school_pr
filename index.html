@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>test</title>
+<meta charset="utf-8">
+<style>
+html, body {
+	margin: 0;
+	background: #001100;
+}
+canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: min(200vh, 100vw);
+	height: min(200vh, 50vw); 
+}
+table {
+	position: relative;
+	display: block;
+	color: white;
+	z-index: 2;
+	text-align: left;
+}
+td {
+	padding: 2px;
+}
+</style>
+</head>
+<body>
+<table>
+	<tr><th>power</th><th>base</th><td id="speedBaseVal">0</td><td><input id="speedBaseRange" type="range" min="0" max="300"/></td></tr>
+	<tr><th></th><th>random</th><td id="speedRandomVal">0</td><td><input id="speedRandomRange" type="range" min="0" max="50"/></td></tr>
+	<tr><th>angle</th><th>base</th><td id="angleBaseVal">0</td><td><input id="angleBaseRange" type="range" min="-90" max="90" step="1"/></td></tr>
+	<tr><th></th><th>random</th><td id="angleRandomVal">0</td><td><input id="angleRandomRange" type="range" min="0" max="45" step="0.5"/></td></tr>
+	<tr><th colspan="2">gravity</th><td id="gravityVal">0</td><td><input id="gravityRange" type="range" min="0" max="30" step="0.01"/></td></tr>
+	<tr><th colspan="2">speed factor</th><td id="speedFactorVal">0</td><td><input id="speedFactorRange" type="range" min="0" max="10" step="0.01"/></td></tr>
+	<tr><th colspan="2">spawn interval (ms)</th><td id="spawnIntervalVal">0</td><td><input id="spawnIntervalRange" type="range" min="10" max="10000"/></td></tr>
+	<tr><th colspan="2">arrow size</th><td id="arrowSizeVal">0</td><td><input id="arrowSizeRange" type="range" min="1" max="1000"/></td></tr>
+</table>
+<canvas id="canvas" height="50" width="100"/>
+
+<script>
+const canvasWidth = 2000
+
+const canvas = document.querySelector("#canvas")
+const ctx = canvas.getContext("2d")
+ctx.strokeStyle = "white" // any css color accepted here
+canvas.setAttribute("width", canvasWidth)
+const canvasHeight = canvasWidth / 2
+canvas.setAttribute("height", canvasHeight)
+
+const elements = {
+	speed: {
+		base: {
+			val: document.querySelector("#speedBaseVal"),
+			input: document.querySelector("#speedBaseRange")
+		},
+		rand: {
+			val: document.querySelector("#speedRandomVal"),
+			input: document.querySelector("#speedRandomRange")
+		}
+	},
+	angle: {
+		base: {
+			val: document.querySelector("#angleBaseVal"),
+			input: document.querySelector("#angleBaseRange")
+		},
+		rand: {
+			val: document.querySelector("#angleRandomVal"),
+			input: document.querySelector("#angleRandomRange")
+		}
+	},
+	gravity: {
+		val: document.querySelector("#gravityVal"),
+		input: document.querySelector("#gravityRange")
+	},
+	speedFactor: {
+		val: document.querySelector("#speedFactorVal"),
+		input: document.querySelector("#speedFactorRange")
+	},
+	spawnInterval: {
+		val: document.querySelector("#spawnIntervalVal"),
+		input: document.querySelector("#spawnIntervalRange")
+	},
+	arrowSize: {
+		val: document.querySelector("#arrowSizeVal"),
+		input: document.querySelector("#arrowSizeRange")
+	}
+}
+</script>
+<script>
+let initialSpeed = 139
+let speedRand = 0
+let perfectAngle = 40
+let angleRand = 0
+let gravity = 9.81
+let speedFactor = 3
+let arrowSpawnInterval = 200
+let arrowSize = 10
+
+elements.speed.base.input.value = initialSpeed
+elements.speed.base.val.textContent = initialSpeed.toFixed(0)
+elements.speed.rand.input.value = speedRand
+elements.speed.rand.val.textContent = speedRand.toFixed(0)
+elements.angle.base.input.value = perfectAngle
+elements.angle.base.val.textContent = perfectAngle.toFixed(0)
+elements.angle.rand.input.value = angleRand
+elements.angle.rand.val.textContent = angleRand.toFixed(1)
+elements.gravity.input.value = gravity
+elements.gravity.val.textContent = gravity.toFixed(2)
+elements.speedFactor.input.value = speedFactor
+elements.speedFactor.val.textContent = speedFactor.toFixed(2)
+elements.spawnInterval.input.value = arrowSpawnInterval
+elements.spawnInterval.val.textContent = arrowSpawnInterval.toFixed(0)
+elements.arrowSize.input.value = arrowSize
+elements.arrowSize.val.textContent = arrowSize.toFixed(0)
+
+
+elements.speed.base.input.onchange = () => {
+	initialSpeed = +elements.speed.base.input.value
+	elements.speed.base.val.textContent = initialSpeed.toFixed(0)
+}
+elements.speed.rand.input.onchange = () => {
+	speedRand = +elements.speed.rand.input.value
+	elements.speed.rand.val.textContent = speedRand.toFixed(0)
+}
+elements.angle.base.input.onchange = () => {
+	perfectAngle = +elements.angle.base.input.value
+	elements.angle.base.val.textContent = perfectAngle.toFixed(0)
+}
+elements.angle.rand.input.onchange = () => {
+	angleRand = +elements.angle.rand.input.value
+	elements.angle.rand.val.textContent = angleRand.toFixed(1)
+}
+elements.gravity.input.onchange = () => {
+	gravity = +elements.gravity.input.value
+	elements.gravity.val.textContent = gravity.toFixed(2)
+}
+elements.speedFactor.input.onchange = () => {
+	speedFactor = +elements.speedFactor.input.value
+	elements.speedFactor.val.textContent = speedFactor.toFixed(2)
+}
+elements.spawnInterval.input.onchange = () => {
+	arrowSpawnInterval = +elements.spawnInterval.input.value
+	elements.spawnInterval.val.textContent = arrowSpawnInterval.toFixed(0)
+}
+elements.arrowSize.input.onchange = () => {
+	arrowSize = +elements.arrowSize.input.value
+	elements.arrowSize.val.textContent = arrowSize.toFixed(0)
+}
+
+
+let arrows = []
+
+class Arrow {
+	pos
+	speed
+
+	constructor(angle, speed) {
+		this.pos = {x: 0, y: 300},
+		this.speed = {
+			x: Math.cos(angle) * speed, 
+			y: Math.sin(angle) * speed
+		}
+	}
+
+	move(elapsedTime) {
+		this.pos.x += this.speed.x * elapsedTime / 1000 * speedFactor
+		this.pos.y += this.speed.y * elapsedTime / 1000 * speedFactor
+		this.speed.y -= gravity * elapsedTime / 1000 * speedFactor
+	}
+}
+
+const generateArrow = () => {
+
+	const degreeAngle = (Math.random() * angleRand) - angleRand / 2 + perfectAngle
+	const angle = degreeAngle / 360 * (2 * Math.PI)
+	const speed = (Math.random() * speedRand) - speedRand / 2 + initialSpeed
+	
+	return new Arrow(angle, speed)
+}
+
+const drawArrows = () => {
+	ctx.lineWidth = 1
+	ctx.fillStyle = "black"
+	ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+	ctx.fillStyle = "white"
+	ctx.beginPath();
+	ctx.ellipse(0, canvasHeight - 300, 5, 5, 0, 0, 2 * Math.PI)
+	ctx.fill()
+	
+	ctx.strokeStyle = "white" // any css color accepted here
+	ctx.beginPath()
+	ctx.moveTo(0, canvasHeight - 300)
+	ctx.lineTo(canvasWidth, canvasHeight - 300)
+	ctx.stroke()
+
+	ctx.strokeStyle = "white"
+	for (const arrow of arrows) {
+		const speed = Math.sqrt(arrow.speed.x ** 2 + arrow.speed.y ** 2)
+		const resultVector = {
+		  x: arrow.speed.x / speed * arrowSize,
+		  y: arrow.speed.y / speed * arrowSize
+		}
+		ctx.beginPath()
+		ctx.moveTo(arrow.pos.x - resultVector.x, canvasHeight - (arrow.pos.y - resultVector.y))
+		ctx.lineTo(arrow.pos.x + resultVector.x, canvasHeight - (arrow.pos.y + resultVector.y))
+		ctx.stroke()
+	}
+}
+
+let lastTimeStamp = 0
+const animate = currentTimeStamp => {
+	const elapsedTime = currentTimeStamp - lastTimeStamp
+
+	if (currentTimeStamp % arrowSpawnInterval < lastTimeStamp % arrowSpawnInterval) {
+		console.log("new arrow")
+		arrows.push(generateArrow())
+	}
+
+	arrows.forEach(a => a.move(elapsedTime))
+	arrows = arrows.filter(a => a.pos.y >= 0)
+	drawArrows()
+
+	lastTimeStamp = currentTimeStamp
+	requestAnimationFrame(animate)
+}
+requestAnimationFrame(animate)
+</script>
+
+</body>
+</html>
